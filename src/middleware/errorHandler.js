@@ -20,6 +20,14 @@ export function errorHandler(err, req, res, next) {
         message = Object.values(err.errors).map((e) => e.message).join(", ");
     }
 
+    // Duplicado de índice unique (ej. email ya registrado). Mongo lo tira
+    // como un error nativo del driver, no como un ValidationError de Mongoose.
+    if (err.code === 11000) {
+        status = 409;
+        const field = Object.keys(err.keyPattern || {})[0] || "campo";
+        message = `Ya existe un registro con ese ${field}`;
+    }
+
     // Los errores >= 500 son inesperados (bug o falla real): se loguean con stack.
     // Los 4xx son esperables (input inválido, recurso no encontrado) y quedan silenciosos.
     if (status >= 500) console.error(err.stack);

@@ -1,18 +1,35 @@
 // Entry point: Configuramos Express y arrancamos el server
 import express from 'express';
+import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import swaggerUi from 'swagger-ui-express';
+import authRouter from './routes/auth.js';
 import tasksRouter from './routes/tasks.js';
 import healthRouter from "./routes/health.js";
 import { connectDB, disconnectDB } from './db/mongoClient.js';
 import openapiSpec from './docs/openapi.js';
 import { notFound } from './middleware/notFound.js';
 import { errorHandler } from './middleware/errorHandler.js';
+import { attachUser } from './middleware/auth.js';
 // El .env ya no es obligatorio: con mongodb-memory-server no hace falta MONGO_URI,
 // y PORT/DB_NAME tienen defaults. Si no existe el archivo, seguimos sin fallar.
 try {
     process.loadEnvFile();
 } catch {
     // no hay .env, seguimos con los defaults
+}
+
+// En dev, authService.js arranca igual sin JWT_ACCESS_SECRET/JWT_REFRESH_SECRET
+// (usa un fallback inseguro y loguea un warning) para no romper el "cero
+// config" de npm run dev. En producción esos secrets son obligatorios: si
+// faltan, no tiene sentido servir tráfico real firmando tokens con un
+// secreto hardcodeado y público -mejor no arrancar.
+function assertProductionSecrets() {
+    if (process.env.NODE_ENV !== "production") return;
+    const missing = ["JWT_ACCESS_SECRET", "JWT_REFRESH_SECRET"].filter((name) => !process.env[name]);
+    if (missing.length) {
+        throw new Error(`Faltan variables de entorno obligatorias en producción: ${missing.join(", ")}`);
+    }
 }
 
 // Red de seguridad a nivel de proceso: Express 5 ya reenvía al errorHandler cualquier
@@ -34,11 +51,30 @@ const PORT = process.env.PORT || 3001;
 app.disable("x-powered-by");
 
 
+// CORS: sin CORS_ORIGIN seteado no habilitamos ningún origin (no usamos
+// "*" porque las cookies de sesión requieren credentials:true, y los
+// browsers rechazan credentials:true combinado con origin "*"). Pensado
+// para un frontend futuro que todavía no existe en este repo.
+const corsOrigin = process.env.CORS_ORIGIN;
+app.use(cors({ origin: corsOrigin || false, credentials: true }));
+
+// Cookies antes que las rutas: authService/attachUser las necesitan para
+// leer accessToken/refreshToken.
+app.use(cookieParser());
+
 // Parsear el body de las request como JSON
 app.use(express.json());
 
-
 const API_PREFIX = '/api/v1';
+
+// attachUser corre para todo /api/v1/* (auth + tasks + docs) pero no para
+// /health: nunca tira, solo intenta resolver (y renovar en silencio si
+// hace falta) req.user a partir de las cookies. Las rutas que necesitan
+// bloquear a un usuario no autenticado usan requireAuth aparte.
+app.use(API_PREFIX, attachUser);
+
+// Montamos el router de auth bajo el prefijo /api/v1/auth
+app.use(`${API_PREFIX}/auth`, authRouter);
 
 // Montamos el router de tareas bajo el prefijo /api/v1/tasks
 app.use(`${API_PREFIX}/tasks`, tasksRouter);
@@ -61,6 +97,7 @@ app.use(notFound);
 app.use(errorHandler);
 
 async function main() {
+    assertProductionSecrets();
     await connectDB();
     app.listen(PORT, () => {
         console.log(`http://localhost:${PORT}`);

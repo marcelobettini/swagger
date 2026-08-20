@@ -7,10 +7,21 @@ const spec = {
     },
     servers: [{ url: '/api/v1' }],
     tags: [
+        { name: 'Auth', description: 'Registro, login, logout y renovación de sesión' },
         { name: 'Tasks', description: 'Operaciones sobre tareas' },
         { name: 'Health', description: 'Estado del servidor y la base de datos' },
     ],
     components: {
+        securitySchemes: {
+            // El access token viaja en una cookie httpOnly (no en el header
+            // Authorization), por eso apiKey/in:cookie y no un esquema bearer.
+            cookieAuth: {
+                type: 'apiKey',
+                in: 'cookie',
+                name: 'accessToken',
+                description: 'Cookie httpOnly seteada por /auth/login o /auth/refresh. Swagger UI la envía sola (no hace falta "Authorize").',
+            },
+        },
         schemas: {
             Task: {
                 type: 'object',
@@ -20,8 +31,38 @@ const spec = {
                     description: { type: 'string', example: 'Leche entera, 2 litros' },
                     priority:    { type: 'string', enum: ['low', 'mid', 'high'], example: 'low' },
                     completed:   { type: 'boolean', example: false },
+                    userId:      { type: 'string', example: '665f1a2b3c4d5e6f7a8b9c0e', description: 'Id del usuario que creó la tarea' },
                     createdAt:   { type: 'string', format: 'date-time' },
                     updatedAt:   { type: 'string', format: 'date-time' },
+                },
+            },
+            User: {
+                type: 'object',
+                properties: {
+                    id:        { type: 'string', example: '665f1a2b3c4d5e6f7a8b9c0e' },
+                    firstName: { type: 'string', example: 'Ana' },
+                    lastName:  { type: 'string', example: 'Gómez' },
+                    email:     { type: 'string', format: 'email', example: 'ana@example.com' },
+                    createdAt: { type: 'string', format: 'date-time' },
+                    updatedAt: { type: 'string', format: 'date-time' },
+                },
+            },
+            RegisterInput: {
+                type: 'object',
+                required: ['firstName', 'lastName', 'email', 'password'],
+                properties: {
+                    firstName: { type: 'string', example: 'Ana' },
+                    lastName:  { type: 'string', example: 'Gómez' },
+                    email:     { type: 'string', format: 'email', example: 'ana@example.com' },
+                    password:  { type: 'string', format: 'password', minLength: 8, example: 'contraseñaSegura123' },
+                },
+            },
+            LoginInput: {
+                type: 'object',
+                required: ['email', 'password'],
+                properties: {
+                    email:    { type: 'string', format: 'email', example: 'ana@example.com' },
+                    password: { type: 'string', format: 'password', example: 'contraseñaSegura123' },
                 },
             },
             TaskInput: {
@@ -62,9 +103,81 @@ const spec = {
                 description: 'Datos de entrada inválidos',
                 content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorStatus' } } },
             },
+            Unauthorized: {
+                description: 'No autenticado (falta o venció la sesión)',
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorStatus' } } },
+            },
+            Forbidden: {
+                description: 'Autenticado, pero sin permiso sobre este recurso',
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorStatus' } } },
+            },
         },
     },
     paths: {
+        '/auth/register': {
+            post: {
+                tags: ['Auth'],
+                summary: 'Registrar un usuario nuevo',
+                description: 'Crea la cuenta pero no inicia sesión: llamar a /auth/login por separado.',
+                requestBody: {
+                    required: true,
+                    content: { 'application/json': { schema: { $ref: '#/components/schemas/RegisterInput' } } },
+                },
+                responses: {
+                    201: {
+                        description: 'Usuario creado',
+                        content: { 'application/json': { schema: { $ref: '#/components/schemas/User' } } },
+                    },
+                    400: { $ref: '#/components/responses/BadRequest' },
+                    409: {
+                        description: 'Ya existe un usuario con ese email',
+                        content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorStatus' } } },
+                    },
+                    429: { description: 'Demasiados intentos, probar más tarde' },
+                },
+            },
+        },
+        '/auth/login': {
+            post: {
+                tags: ['Auth'],
+                summary: 'Iniciar sesión',
+                description: 'Si las credenciales son correctas, setea las cookies httpOnly accessToken (15 min) y refreshToken (7 días, con rotation).',
+                requestBody: {
+                    required: true,
+                    content: { 'application/json': { schema: { $ref: '#/components/schemas/LoginInput' } } },
+                },
+                responses: {
+                    200: {
+                        description: 'Login exitoso',
+                        content: { 'application/json': { schema: { $ref: '#/components/schemas/User' } } },
+                    },
+                    400: { $ref: '#/components/responses/BadRequest' },
+                    401: { description: 'Credenciales inválidas', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorStatus' } } } },
+                    429: { description: 'Demasiados intentos, probar más tarde' },
+                },
+            },
+        },
+        '/auth/refresh': {
+            post: {
+                tags: ['Auth'],
+                summary: 'Renovar la sesión explícitamente',
+                description: 'Normalmente no hace falta llamarlo a mano: el middleware attachUser ya renueva la sesión en silencio en cada request si el access token expiró y el refresh token sigue siendo válido. Este endpoint solo confirma el resultado.',
+                responses: {
+                    200: { description: 'Sesión renovada (o ya vigente)' },
+                    401: { $ref: '#/components/responses/Unauthorized' },
+                },
+            },
+        },
+        '/auth/logout': {
+            post: {
+                tags: ['Auth'],
+                summary: 'Cerrar sesión',
+                description: 'Revoca el refresh token en el servidor (si se pudo identificar al usuario) y limpia ambas cookies. No requiere estar autenticado (best-effort).',
+                responses: {
+                    200: { description: 'Sesión cerrada' },
+                },
+            },
+        },
         '/tasks': {
             get: {
                 tags: ['Tasks'],
@@ -98,6 +211,8 @@ const spec = {
             post: {
                 tags: ['Tasks'],
                 summary: 'Crear tarea',
+                description: 'Requiere estar autenticado. La tarea se crea con userId = usuario autenticado.',
+                security: [{ cookieAuth: [] }],
                 requestBody: {
                     required: true,
                     content: { 'application/json': { schema: { $ref: '#/components/schemas/TaskInput' } } },
@@ -108,6 +223,7 @@ const spec = {
                         content: { 'application/json': { schema: { $ref: '#/components/schemas/Task' } } },
                     },
                     400: { $ref: '#/components/responses/BadRequest' },
+                    401: { $ref: '#/components/responses/Unauthorized' },
                 },
             },
         },
@@ -129,6 +245,8 @@ const spec = {
             patch: {
                 tags: ['Tasks'],
                 summary: 'Actualizar tarea parcialmente',
+                description: 'Requiere estar autenticado y ser el usuario que creó la tarea.',
+                security: [{ cookieAuth: [] }],
                 requestBody: {
                     required: true,
                     content: { 'application/json': { schema: { $ref: '#/components/schemas/TaskPatch' } } },
@@ -139,14 +257,20 @@ const spec = {
                         content: { 'application/json': { schema: { $ref: '#/components/schemas/Task' } } },
                     },
                     400: { $ref: '#/components/responses/BadRequest' },
+                    401: { $ref: '#/components/responses/Unauthorized' },
+                    403: { $ref: '#/components/responses/Forbidden' },
                     404: { $ref: '#/components/responses/NotFound' },
                 },
             },
             delete: {
                 tags: ['Tasks'],
                 summary: 'Eliminar tarea',
+                description: 'Requiere estar autenticado y ser el usuario que creó la tarea.',
+                security: [{ cookieAuth: [] }],
                 responses: {
                     204: { description: 'Tarea eliminada' },
+                    401: { $ref: '#/components/responses/Unauthorized' },
+                    403: { $ref: '#/components/responses/Forbidden' },
                     404: { $ref: '#/components/responses/NotFound' },
                 },
             },
@@ -158,12 +282,15 @@ const spec = {
             patch: {
                 tags: ['Tasks'],
                 summary: 'Invertir estado completed',
-                description: 'Flip atómico: si completed era false pasa a true y viceversa. Actualiza updatedAt.',
+                description: 'Flip atómico: si completed era false pasa a true y viceversa. Actualiza updatedAt. Requiere estar autenticado y ser el usuario que creó la tarea.',
+                security: [{ cookieAuth: [] }],
                 responses: {
                     200: {
                         description: 'Tarea con estado invertido',
                         content: { 'application/json': { schema: { $ref: '#/components/schemas/Task' } } },
                     },
+                    401: { $ref: '#/components/responses/Unauthorized' },
+                    403: { $ref: '#/components/responses/Forbidden' },
                     404: { $ref: '#/components/responses/NotFound' },
                 },
             },
