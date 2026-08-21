@@ -43,6 +43,30 @@ const spec = {
                     firstName: { type: 'string', example: 'Ana' },
                     lastName: { type: 'string', example: 'Gómez' },
                     email: { type: 'string', format: 'email', example: 'ana@example.com' },
+                    role: { type: 'string', enum: ['user', 'admin'], example: 'user', description: 'Solo se asigna "admin" vía el seed de arranque, nunca desde /auth/register.' },
+                    createdAt: { type: 'string', format: 'date-time' },
+                    updatedAt: { type: 'string', format: 'date-time' },
+                },
+            },
+            TaskWithUser: {
+                type: 'object',
+                description: 'Igual que Task, pero con userId reemplazado por los datos del usuario que creó la tarea. Solo lo devuelve GET /tasks/all.',
+                properties: {
+                    id: { type: 'string', example: '665f1a2b3c4d5e6f7a8b9c0d' },
+                    title: { type: 'string', example: 'Comprar leche' },
+                    description: { type: 'string', example: 'Leche entera, 2 litros' },
+                    priority: { type: 'string', enum: ['low', 'mid', 'high'], example: 'low' },
+                    completed: { type: 'boolean', example: false },
+                    user: {
+                        type: 'object',
+                        description: 'Usuario que creó la tarea',
+                        properties: {
+                            id: { type: 'string', example: '665f1a2b3c4d5e6f7a8b9c0e' },
+                            firstName: { type: 'string', example: 'Ana' },
+                            lastName: { type: 'string', example: 'Gómez' },
+                            email: { type: 'string', format: 'email', example: 'ana@example.com' },
+                        },
+                    },
                     createdAt: { type: 'string', format: 'date-time' },
                     updatedAt: { type: 'string', format: 'date-time' },
                 },
@@ -213,6 +237,22 @@ const spec = {
                     },
                     400: { $ref: '#/components/responses/BadRequest' },
                     401: { $ref: '#/components/responses/Unauthorized' },
+                },
+            },
+        },
+        '/tasks/all': {
+            get: {
+                tags: ['Tasks'],
+                summary: 'Listado completo de tareas con datos del creador (solo admin)',
+                description: 'Requiere estar autenticado y tener rol admin. A diferencia de GET /tasks, devuelve [] en vez de 404 cuando no hay tareas, e incluye los datos del usuario que creó cada una en vez de solo su id.',
+                security: [{ cookieAuth: [] }],
+                responses: {
+                    200: {
+                        description: 'Lista de tareas con datos del usuario creador',
+                        content: { 'application/json': { schema: { type: 'array', items: { $ref: '#/components/schemas/TaskWithUser' } } } },
+                    },
+                    401: { $ref: '#/components/responses/Unauthorized' },
+                    403: { $ref: '#/components/responses/Forbidden' },
                 },
             },
         },

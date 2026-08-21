@@ -11,6 +11,7 @@ import openapiSpec from './docs/openapi.js';
 import { notFound } from './middleware/notFound.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { attachUser } from './middleware/auth.js';
+import { ensureAdminUser } from './services/userService.js';
 // El .env ya no es obligatorio: con mongodb-memory-server no hace falta MONGO_URI,
 // y PORT/DB_NAME tienen defaults. Si no existe el archivo, seguimos sin fallar.
 try {
@@ -29,6 +30,25 @@ function assertProductionSecrets() {
     if (!process.env.JWT_ACCESS_SECRET) {
         throw new Error("Falta la variable de entorno obligatoria en producción: JWT_ACCESS_SECRET");
     }
+}
+
+// seeder 01. Acá se decide *cuándo* sembrar y *con qué* credenciales (env
+// vars, default solo en dev): es una decisión de arranque/despliegue -mismo
+// tipo de decisión que assertProductionSecrets() arriba-, por eso vive acá
+// y no en el service. En dev usamos default porque la DB es efímera
+// (mongodb-memory-server la borra en cada restart) y sin un admin no habría
+// forma de probar /api/tasks/all. En producción no inventamos credenciales:
+// si faltan, no se siembra nada (a diferencia de JWT_ACCESS_SECRET, no es
+// fatal). La escritura en sí es un paso aparte, reusable y sin saber nada
+// de env vars -> ver /src/services/userService.js seeder 02.
+async function seedAdmin() {
+    const isProd = process.env.NODE_ENV === "production";
+    const email = process.env.ADMIN_EMAIL ?? (isProd ? null : "admin@example.com");
+    const password = process.env.ADMIN_PASSWORD ?? (isProd ? null : "admin1234");
+    if (!email || !password) return;
+    // seeder 01 termina acá: le paso las credenciales ya resueltas a seeder 02.
+    await ensureAdminUser({ firstName: "Admin", lastName: "User", email, password });
+    console.log(`[seed] admin disponible: ${email}`);
 }
 
 // Red de seguridad a nivel de proceso: Express 5 ya reenvía al errorHandler cualquier
@@ -98,6 +118,7 @@ app.use(errorHandler);
 async function main() {
     assertProductionSecrets();
     await connectDB();
+    await seedAdmin();
     app.listen(PORT, () => {
         console.log(`http://localhost:${PORT}`);
     });

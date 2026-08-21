@@ -16,6 +16,12 @@ export async function getAll({ completed, search } = {}) {
     return Task.find(query);
 }
 
+// Solo para el listado de admin: trae el creador de cada tarea con populate.
+// El resto de los endpoints sigue devolviendo userId como string, sin joins.
+export async function getAllWithUsers() {
+    return Task.find().populate("userId", "firstName lastName email");
+}
+
 export async function getById(id) {
     return Task.findById(id);
 }

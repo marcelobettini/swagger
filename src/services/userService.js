@@ -26,3 +26,28 @@ export async function findByEmailWithPassword(email) {
 export async function verifyPassword(plain, hash) {
     return bcrypt.compare(plain, hash);
 }
+
+// seeder 02. Recibe las credenciales ya resueltas por seeder 01
+// (/src/index.js) y hace la escritura idempotente: crea o promueve el User
+// a role:"admin", sin saber nada de process.env ni de si es prod o dev
+// -mismo principio que separa authService.js (JWT) de la DB: cada capa
+// conoce una sola cosa. Así queda reusable (cualquier caller con un
+// email/password puede sembrar un admin, no solo el arranque) y fácil de
+// probar sin tocar variables globales. createUser() a propósito no acepta
+// `role`: esta es la única función que puede escribir role:"admin", y solo
+// seeder 01 la llama -así ningún endpoint (ej. /auth/register) puede
+// auto-promover a un usuario.
+export async function ensureAdminUser({ firstName, lastName, email, password }) {
+    const existing = await User.findOne({ email });
+    if (existing) {
+        if (existing.role !== "admin") {
+            existing.role = "admin";
+            await existing.save();
+        }
+        return existing;
+    }
+    const user = await createUser({ firstName, lastName, email, password });
+    user.role = "admin";
+    await user.save();
+    return user;
+}

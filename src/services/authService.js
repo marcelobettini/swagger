@@ -37,8 +37,8 @@ function getAccessSecret() {
     return INSECURE_DEV_ACCESS_SECRET;
 }
 
-function signAccessToken(userId) {
-    return jwt.sign({ sub: userId }, getAccessSecret(), { expiresIn: ACCESS_TOKEN_TTL_SECONDS });
+function signAccessToken(userId, role) {
+    return jwt.sign({ sub: userId, role }, getAccessSecret(), { expiresIn: ACCESS_TOKEN_TTL_SECONDS });
 }
 
 // Nunca tira: jsonwebtoken lanza TokenExpiredError/JsonWebTokenError/etc.,
@@ -61,11 +61,12 @@ function verifyAccessToken(token) {
 // (12h), el cliente vuelve a loguearse.
 function issueSession(user, res) {
     const userId = (user._id ?? user.id).toString();
-    const accessToken = signAccessToken(userId);
+    const role = user.role ?? "user";
+    const accessToken = signAccessToken(userId, role);
 
     setAccessCookie(res, accessToken);
 
-    return { userId };
+    return { userId, role };
 }
 
 export { signAccessToken, safeVerify, verifyAccessToken, issueSession };

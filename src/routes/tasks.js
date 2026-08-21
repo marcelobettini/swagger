@@ -1,7 +1,7 @@
 import { Router } from "express";
-import { getAll, getById, add, update, remove, toggle } from "../services/taskService.js";
+import { getAll, getAllWithUsers, getById, add, update, remove, toggle } from "../services/taskService.js";
 import { AppError } from "../errors/AppError.js";
-import { requireAuth } from "../middleware/auth.js";
+import { requireAuth, requireAdmin } from "../middleware/auth.js";
 
 const router = Router();
 const VALID_PRIORITIES = ["low", "mid", "high"];
@@ -27,6 +27,21 @@ router.get("/", async (req, res) => {
         throw new AppError("No se encontraron tareas", 404);
     }
     res.json(tasks);
+});
+
+// GET /api/tasks/all — antes de /:id para que Express no tome "all" como id
+// (mismo motivo que /:id/toggle antes de /:id, más abajo). Solo admin: trae
+// el listado completo de tareas con los datos del usuario que las creó.
+router.get("/all", requireAuth, requireAdmin, async (req, res) => {
+    const tasks = await getAllWithUsers();
+    // populate deja el usuario dentro de `userId`; lo renombramos a `user`
+    // para que la respuesta se lea por lo que es. A diferencia de GET /,
+    // acá no tiramos 404 si no hay tareas -un tablero de admin vacío no es
+    // un error, es un array vacío.
+    res.json(tasks.map((task) => {
+        const { userId: user, ...rest } = task.toJSON();
+        return { ...rest, user };
+    }));
 });
 
 // GET /api/tasks/:id

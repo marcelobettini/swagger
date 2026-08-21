@@ -16,6 +16,10 @@ const userSchema = new mongoose.Schema(
         firstName: { type: String, required: true, trim: true },
         lastName: { type: String, required: true, trim: true },
         email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+        // "user" por default: la única forma de volverse admin es el seed de
+        // arranque (ver ensureAdminUser en userService.js) -createUser no
+        // acepta este campo, así que no se puede auto-promover vía /register.
+        role: { type: String, enum: ["user", "admin"], default: "user" },
         // select:false: no viaja en queries normales (find/findById), hay que
         // pedirlo explícitamente con .select('+passwordHash') para login.
         passwordHash: { type: String, required: true, select: false },
