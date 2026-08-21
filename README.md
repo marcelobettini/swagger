@@ -21,7 +21,7 @@
 ## URL Base
 
 ```
-http://localhost:3001/api/v1
+http://localhost:3001/api
 ```
 
 ---
@@ -54,25 +54,25 @@ Lista todas las tareas. Acepta query params opcionales para filtrar resultados.
 **Listar todas las tareas**
 
 ```http
-GET /api/v1/tasks
+GET /api/tasks
 ```
 
 **Filtrar por estado**
 
 ```http
-GET /api/v1/tasks?completed=false
+GET /api/tasks?completed=false
 ```
 
 **Buscar por texto**
 
 ```http
-GET /api/v1/tasks?search=compras
+GET /api/tasks?search=compras
 ```
 
 **Combinar filtros**
 
 ```http
-GET /api/v1/tasks?completed=false&search=compras
+GET /api/tasks?completed=false&search=compras
 ```
 
 ---
@@ -82,7 +82,7 @@ GET /api/v1/tasks?completed=false&search=compras
 Obtiene una tarea por su id.
 
 ```http
-GET /api/v1/tasks/664f1a2b3c4d5e6f7a8b9c0d
+GET /api/tasks/664f1a2b3c4d5e6f7a8b9c0d
 ```
 
 ---
@@ -98,7 +98,7 @@ Crea una nueva tarea.
 | `priority`    | `string` | No        | `"low"`, `"mid"`, `"high"` | `"low"` |
 
 ```http
-POST /api/v1/tasks
+POST /api/tasks
 Content-Type: application/json
 ```
 
@@ -124,7 +124,7 @@ Actualiza parcialmente una tarea. Solo se modifican los campos enviados en el cu
 | `completed`   | `boolean` | `true` o `false`           |
 
 ```http
-PATCH /api/v1/tasks/664f1a2b3c4d5e6f7a8b9c0d
+PATCH /api/tasks/664f1a2b3c4d5e6f7a8b9c0d
 Content-Type: application/json
 ```
 
@@ -142,7 +142,7 @@ Content-Type: application/json
 Invierte el valor de `completed` sin necesidad de enviar cuerpo.
 
 ```http
-PATCH /api/v1/tasks/664f1a2b3c4d5e6f7a8b9c0d/toggle
+PATCH /api/tasks/664f1a2b3c4d5e6f7a8b9c0d/toggle
 ```
 
 ---
@@ -152,14 +152,14 @@ PATCH /api/v1/tasks/664f1a2b3c4d5e6f7a8b9c0d/toggle
 Elimina una tarea. Devuelve `204 No Content` si la operación fue exitosa.
 
 ```http
-DELETE /api/v1/tasks/664f1a2b3c4d5e6f7a8b9c0d
+DELETE /api/tasks/664f1a2b3c4d5e6f7a8b9c0d
 ```
 
 ---
 
 ### GET /health
 
-Verifica que el servidor esté activo y que la conexión a MongoDB responda. No está bajo el prefijo `/api/v1`.
+Verifica que el servidor esté activo y que la conexión a MongoDB responda. No está bajo el prefijo `/api`.
 
 ```http
 GET /health

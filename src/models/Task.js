@@ -9,6 +9,10 @@ const taskSchema = new mongoose.Schema(
         description: { type: String, default: "" },
         priority: { type: String, enum: ["low", "mid", "high"], default: "low" },
         completed: { type: Boolean, default: false },
+        // Dueño de la tarea: solo este usuario puede editarla/borrarla (ver
+        // src/routes/tasks.js). Mongo serializa el ObjectId como string hex
+        // automáticamente, no hace falta tocar el toJSON transform de abajo.
+        userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     },
     {
         // Mongoose gestiona createdAt/updatedAt solo: los setea en create() y los actualiza

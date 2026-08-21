@@ -12,7 +12,12 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.6.2",
+    "jsonwebtoken": "^9.0.3",
     "mongodb-memory-server": "^11.2.0",
     "mongoose": "^9.9.3",
     "swagger-ui-express": "^5.0.1"
