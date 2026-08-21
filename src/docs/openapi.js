@@ -5,9 +5,9 @@ const spec = {
         version: '0.0.1',
         description: 'API REST para gestión de tareas. CRUD completo con filtros y toggle de estado.',
     },
-    servers: [{ url: '/api/v1' }],
+    servers: [{ url: '/api' }],
     tags: [
-        { name: 'Auth', description: 'Registro, login, logout y renovación de sesión' },
+        { name: 'Auth', description: 'Registro, login y logout' },
         { name: 'Tasks', description: 'Operaciones sobre tareas' },
         { name: 'Health', description: 'Estado del servidor y la base de datos' },
     ],
@@ -19,30 +19,30 @@ const spec = {
                 type: 'apiKey',
                 in: 'cookie',
                 name: 'accessToken',
-                description: 'Cookie httpOnly seteada por /auth/login o /auth/refresh. Swagger UI la envía sola (no hace falta "Authorize").',
+                description: 'Cookie httpOnly seteada por /auth/login, válida 12hs. Swagger UI la envía sola (no hace falta "Authorize"). No hay renovación: al expirar, hay que loguearse de nuevo.',
             },
         },
         schemas: {
             Task: {
                 type: 'object',
                 properties: {
-                    id:          { type: 'string', example: '665f1a2b3c4d5e6f7a8b9c0d' },
-                    title:       { type: 'string', example: 'Comprar leche' },
+                    id: { type: 'string', example: '665f1a2b3c4d5e6f7a8b9c0d' },
+                    title: { type: 'string', example: 'Comprar leche' },
                     description: { type: 'string', example: 'Leche entera, 2 litros' },
-                    priority:    { type: 'string', enum: ['low', 'mid', 'high'], example: 'low' },
-                    completed:   { type: 'boolean', example: false },
-                    userId:      { type: 'string', example: '665f1a2b3c4d5e6f7a8b9c0e', description: 'Id del usuario que creó la tarea' },
-                    createdAt:   { type: 'string', format: 'date-time' },
-                    updatedAt:   { type: 'string', format: 'date-time' },
+                    priority: { type: 'string', enum: ['low', 'mid', 'high'], example: 'low' },
+                    completed: { type: 'boolean', example: false },
+                    userId: { type: 'string', example: '665f1a2b3c4d5e6f7a8b9c0e', description: 'Id del usuario que creó la tarea' },
+                    createdAt: { type: 'string', format: 'date-time' },
+                    updatedAt: { type: 'string', format: 'date-time' },
                 },
             },
             User: {
                 type: 'object',
                 properties: {
-                    id:        { type: 'string', example: '665f1a2b3c4d5e6f7a8b9c0e' },
+                    id: { type: 'string', example: '665f1a2b3c4d5e6f7a8b9c0e' },
                     firstName: { type: 'string', example: 'Ana' },
-                    lastName:  { type: 'string', example: 'Gómez' },
-                    email:     { type: 'string', format: 'email', example: 'ana@example.com' },
+                    lastName: { type: 'string', example: 'Gómez' },
+                    email: { type: 'string', format: 'email', example: 'ana@example.com' },
                     createdAt: { type: 'string', format: 'date-time' },
                     updatedAt: { type: 'string', format: 'date-time' },
                 },
@@ -52,16 +52,16 @@ const spec = {
                 required: ['firstName', 'lastName', 'email', 'password'],
                 properties: {
                     firstName: { type: 'string', example: 'Ana' },
-                    lastName:  { type: 'string', example: 'Gómez' },
-                    email:     { type: 'string', format: 'email', example: 'ana@example.com' },
-                    password:  { type: 'string', format: 'password', minLength: 8, example: 'contraseñaSegura123' },
+                    lastName: { type: 'string', example: 'Gómez' },
+                    email: { type: 'string', format: 'email', example: 'ana@example.com' },
+                    password: { type: 'string', format: 'password', minLength: 8, example: 'contraseñaSegura123' },
                 },
             },
             LoginInput: {
                 type: 'object',
                 required: ['email', 'password'],
                 properties: {
-                    email:    { type: 'string', format: 'email', example: 'ana@example.com' },
+                    email: { type: 'string', format: 'email', example: 'ana@example.com' },
                     password: { type: 'string', format: 'password', example: 'contraseñaSegura123' },
                 },
             },
@@ -69,18 +69,18 @@ const spec = {
                 type: 'object',
                 required: ['title'],
                 properties: {
-                    title:       { type: 'string', example: 'Comprar leche' },
+                    title: { type: 'string', example: 'Comprar leche' },
                     description: { type: 'string', example: 'Leche entera, 2 litros' },
-                    priority:    { type: 'string', enum: ['low', 'mid', 'high'], default: 'low' },
+                    priority: { type: 'string', enum: ['low', 'mid', 'high'], default: 'low' },
                 },
             },
             TaskPatch: {
                 type: 'object',
                 properties: {
-                    title:       { type: 'string', example: 'Comprar leche desnatada' },
+                    title: { type: 'string', example: 'Comprar leche desnatada' },
                     description: { type: 'string', example: 'Sin lactosa' },
-                    priority:    { type: 'string', enum: ['low', 'mid', 'high'] },
-                    completed:   { type: 'boolean' },
+                    priority: { type: 'string', enum: ['low', 'mid', 'high'] },
+                    completed: { type: 'boolean' },
                 },
             },
             // Shape que devuelve el manejador de errores centralizado (src/middleware/errorHandler.js)
@@ -90,7 +90,7 @@ const spec = {
                 type: 'object',
                 properties: {
                     status: { type: 'integer', example: 400 },
-                    error:  { type: 'string', example: 'Bad Request' },
+                    error: { type: 'string', example: 'Bad Request' },
                 },
             },
         },
@@ -141,7 +141,7 @@ const spec = {
             post: {
                 tags: ['Auth'],
                 summary: 'Iniciar sesión',
-                description: 'Si las credenciales son correctas, setea las cookies httpOnly accessToken (15 min) y refreshToken (7 días, con rotation).',
+                description: 'Si las credenciales son correctas, setea la cookie httpOnly accessToken (12hs). Sin refresh token: al expirar la cookie, hay que volver a hacer login.',
                 requestBody: {
                     required: true,
                     content: { 'application/json': { schema: { $ref: '#/components/schemas/LoginInput' } } },
@@ -157,22 +157,11 @@ const spec = {
                 },
             },
         },
-        '/auth/refresh': {
-            post: {
-                tags: ['Auth'],
-                summary: 'Renovar la sesión explícitamente',
-                description: 'Normalmente no hace falta llamarlo a mano: el middleware attachUser ya renueva la sesión en silencio en cada request si el access token expiró y el refresh token sigue siendo válido. Este endpoint solo confirma el resultado.',
-                responses: {
-                    200: { description: 'Sesión renovada (o ya vigente)' },
-                    401: { $ref: '#/components/responses/Unauthorized' },
-                },
-            },
-        },
         '/auth/logout': {
             post: {
                 tags: ['Auth'],
                 summary: 'Cerrar sesión',
-                description: 'Revoca el refresh token en el servidor (si se pudo identificar al usuario) y limpia ambas cookies. No requiere estar autenticado (best-effort).',
+                description: 'Limpia la cookie accessToken. No hay nada que revocar del lado del servidor (JWT stateless, sin refresh token) -no requiere estar autenticado.',
                 responses: {
                     200: { description: 'Sesión cerrada' },
                 },
@@ -308,8 +297,8 @@ const spec = {
                                 schema: {
                                     type: 'object',
                                     properties: {
-                                        status:    { type: 'string', example: 'ok' },
-                                        db:        { type: 'string', example: 'ok' },
+                                        status: { type: 'string', example: 'ok' },
+                                        db: { type: 'string', example: 'ok' },
                                         timestamp: { type: 'string', format: 'date-time' },
                                     },
                                 },
@@ -323,8 +312,8 @@ const spec = {
                                 schema: {
                                     type: 'object',
                                     properties: {
-                                        status:    { type: 'string', example: 'error' },
-                                        db:        { type: 'string', example: 'unreachable' },
+                                        status: { type: 'string', example: 'error' },
+                                        db: { type: 'string', example: 'unreachable' },
                                         timestamp: { type: 'string', format: 'date-time' },
                                     },
                                 },

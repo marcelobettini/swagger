@@ -15,7 +15,7 @@ function assertOwner(task, userId) {
     }
 }
 
-// GET /api/v1/tasks
+// GET /api/tasks
 router.get("/", async (req, res) => {
     const { completed, search } = req.query;
     const filters = {};
@@ -29,14 +29,14 @@ router.get("/", async (req, res) => {
     res.json(tasks);
 });
 
-// GET /api/v1/tasks/:id
+// GET /api/tasks/:id
 router.get("/:id", async (req, res) => {
     const task = await getById(req.params.id);
     if (!task) throw new AppError(`No se encontró la tarea con id ${req.params.id}`, 404);
     res.json(task);
 });
 
-// POST /api/v1/tasks
+// POST /api/tasks
 router.post("/", requireAuth, async (req, res) => {
     const title = req.body.title?.trim();
     const description = (req.body.description ?? "").trim();
@@ -50,7 +50,7 @@ router.post("/", requireAuth, async (req, res) => {
     res.status(201).json(task);
 });
 
-// PATCH /api/v1/tasks/:id/toggle — before /:id so Express doesn't treat "toggle" as an id
+// PATCH /api/tasks/:id/toggle — before /:id so Express doesn't treat "toggle" as an id
 router.patch("/:id/toggle", requireAuth, async (req, res) => {
     const { id } = req.params;
     const existing = await getById(id);
@@ -61,7 +61,7 @@ router.patch("/:id/toggle", requireAuth, async (req, res) => {
     res.json(task);
 });
 
-// PATCH /api/v1/tasks/:id
+// PATCH /api/tasks/:id
 router.patch("/:id", requireAuth, async (req, res) => {
     const { id } = req.params;
     const task = await getById(id);
@@ -85,7 +85,7 @@ router.patch("/:id", requireAuth, async (req, res) => {
     res.json(updated);
 });
 
-// DELETE /api/v1/tasks/:id
+// DELETE /api/tasks/:id
 router.delete("/:id", requireAuth, async (req, res) => {
     const { id } = req.params;
     const existing = await getById(id);

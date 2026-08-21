@@ -1,6 +1,7 @@
 // Servicio de persistencia/credenciales de usuario. No sabe nada de JWT
 // ni de cookies -esa orquestación vive en authService.js-, solo hashea
-// passwords y lee/escribe el documento User.
+// passwords y lee/escribe el documento User. Sin refresh token, no hay
+// ningún estado de sesión que persistir acá: solo credenciales.
 import bcrypt from "bcryptjs";
 import User from "../models/User.js";
 
@@ -14,26 +15,14 @@ export async function createUser({ firstName, lastName, email, password }) {
     return User.create({ firstName, lastName, email, passwordHash });
 }
 
+// findByEmailWithPassword: busca un usuario por su email y devuelve el
+// documento con el campo passwordHash incluido, que normalmente está
+// excluido de la selección por defecto. Usado durante el login para
+// verificar la contraseña.
 export async function findByEmailWithPassword(email) {
     return User.findOne({ email }).select("+passwordHash");
 }
 
-export async function findByIdWithRefreshState(id) {
-    return User.findById(id).select("+refreshTokenHash +refreshTokenExpiresAt");
-}
-
 export async function verifyPassword(plain, hash) {
     return bcrypt.compare(plain, hash);
-}
-
-export async function setRefreshToken(userId, hash, expiresAt) {
-    return User.findByIdAndUpdate(userId, {
-        $set: { refreshTokenHash: hash, refreshTokenExpiresAt: expiresAt },
-    });
-}
-
-export async function clearRefreshToken(userId) {
-    return User.findByIdAndUpdate(userId, {
-        $set: { refreshTokenHash: null, refreshTokenExpiresAt: null },
-    });
 }

@@ -2,7 +2,7 @@ import { Router } from "express";
 import rateLimit from "express-rate-limit";
 import { AppError } from "../errors/AppError.js";
 import * as userService from "../services/userService.js";
-import { issueSession, revokeSession } from "../services/authService.js";
+import { issueSession } from "../services/authService.js";
 import { clearAuthCookies } from "../utils/cookies.js";
 
 const router = Router();
@@ -11,7 +11,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 8;
 
 // Rate limit simple contra fuerza bruta: 10 intentos cada 15 min por IP,
-// solo en register/login (no en refresh/logout).
+// solo en register/login (no en logout).
 const authRateLimit = rateLimit({
     windowMs: 15 * 60 * 1000,
     limit: 10,
@@ -20,7 +20,7 @@ const authRateLimit = rateLimit({
     message: { status: 429, error: "Demasiados intentos, probá de nuevo más tarde" },
 });
 
-// POST /api/v1/auth/register — no inicia sesión automáticamente, el
+// POST /api/auth/register — no inicia sesión automáticamente, el
 // cliente tiene que llamar a /login por separado.
 router.post("/register", authRateLimit, async (req, res) => {
     const firstName = req.body.firstName?.trim();
@@ -41,7 +41,7 @@ router.post("/register", authRateLimit, async (req, res) => {
     res.status(201).json(user);
 });
 
-// POST /api/v1/auth/login
+// POST /api/auth/login
 router.post("/login", authRateLimit, async (req, res) => {
     const email = req.body.email?.trim().toLowerCase();
     const { password } = req.body;
@@ -58,23 +58,11 @@ router.post("/login", authRateLimit, async (req, res) => {
     res.json(user);
 });
 
-// POST /api/v1/auth/refresh — endpoint explícito para completitud de la
-// API. attachUser (middleware global) ya intentó resolver/rotar la sesión
-// antes de llegar acá, así que no duplicamos la lógica de rotation: solo
-// confirmamos el resultado que dejó en req.user.
-router.post("/refresh", async (req, res) => {
-    if (!req.user) throw new AppError("No se pudo renovar la sesión", 401);
-    res.json({ status: "ok" });
-});
-
-// POST /api/v1/auth/logout — best-effort, sin requireAuth. La cookie
-// refreshToken tiene path=/api/v1/auth/refresh así que ni siquiera viaja
-// hasta acá, y si el access token ya expiró un requireAuth estricto
-// dejaría las cookies "colgadas" sin forma de limpiarlas desde el cliente.
-// Si logramos identificar al usuario vía req.user, revocamos su sesión en
-// DB; en cualquier caso, siempre limpiamos las cookies.
-router.post("/logout", async (req, res) => {
-    if (req.user) await revokeSession(req.user.id);
+// POST /api/auth/logout — best-effort, sin requireAuth: si el access
+// token ya expiró, un requireAuth estricto dejaría la cookie "colgada" sin
+// forma de limpiarla desde el cliente. No hay nada que revocar en DB (JWT
+// stateless, sin refresh token) -logout es puramente limpiar la cookie.
+router.post("/logout", (req, res) => {
     clearAuthCookies(res);
     res.json({ status: "ok" });
 });

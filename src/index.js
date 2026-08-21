@@ -19,16 +19,15 @@ try {
     // no hay .env, seguimos con los defaults
 }
 
-// En dev, authService.js arranca igual sin JWT_ACCESS_SECRET/JWT_REFRESH_SECRET
-// (usa un fallback inseguro y loguea un warning) para no romper el "cero
-// config" de npm run dev. En producción esos secrets son obligatorios: si
-// faltan, no tiene sentido servir tráfico real firmando tokens con un
-// secreto hardcodeado y público -mejor no arrancar.
+// En dev, authService.js arranca igual sin JWT_ACCESS_SECRET (usa un
+// fallback inseguro y loguea un warning) para no romper el "cero config" de
+// npm run dev. En producción ese secret es obligatorio: si falta, no tiene
+// sentido servir tráfico real firmando tokens con un secreto hardcodeado y
+// público -mejor no arrancar.
 function assertProductionSecrets() {
     if (process.env.NODE_ENV !== "production") return;
-    const missing = ["JWT_ACCESS_SECRET", "JWT_REFRESH_SECRET"].filter((name) => !process.env[name]);
-    if (missing.length) {
-        throw new Error(`Faltan variables de entorno obligatorias en producción: ${missing.join(", ")}`);
+    if (!process.env.JWT_ACCESS_SECRET) {
+        throw new Error("Falta la variable de entorno obligatoria en producción: JWT_ACCESS_SECRET");
     }
 }
 
@@ -58,31 +57,31 @@ app.disable("x-powered-by");
 const corsOrigin = process.env.CORS_ORIGIN;
 app.use(cors({ origin: corsOrigin || false, credentials: true }));
 
-// Cookies antes que las rutas: authService/attachUser las necesitan para
-// leer accessToken/refreshToken.
+// Cookies antes que las rutas: authService/attachUser necesitan leer la
+// cookie accessToken.
 app.use(cookieParser());
 
 // Parsear el body de las request como JSON
 app.use(express.json());
 
-const API_PREFIX = '/api/v1';
+const API_PREFIX = '/api';
 
-// attachUser corre para todo /api/v1/* (auth + tasks + docs) pero no para
-// /health: nunca tira, solo intenta resolver (y renovar en silencio si
-// hace falta) req.user a partir de las cookies. Las rutas que necesitan
-// bloquear a un usuario no autenticado usan requireAuth aparte.
+// attachUser corre para todo /api/* (auth + tasks + docs) pero no para
+// /health: nunca tira, solo intenta resolver req.user a partir de la
+// cookie accessToken -sin ningún tipo de renovación. Las rutas que
+// necesitan bloquear a un usuario no autenticado usan requireAuth aparte.
 app.use(API_PREFIX, attachUser);
 
-// Montamos el router de auth bajo el prefijo /api/v1/auth
+// Montamos el router de auth bajo el prefijo /api/auth
 app.use(`${API_PREFIX}/auth`, authRouter);
 
-// Montamos el router de tareas bajo el prefijo /api/v1/tasks
+// Montamos el router de tareas bajo el prefijo /api/tasks
 app.use(`${API_PREFIX}/tasks`, tasksRouter);
 
 // Spec JSON crudo (útil para clientes externos)
 app.get(`${API_PREFIX}/openapi.json`, (req, res) => res.json(openapiSpec));
 
-// Swagger UI en /api/v1 — montado después de /tasks para que Express resuelva primero la ruta más específica
+// Swagger UI en /api — montado después de /tasks para que Express resuelva primero la ruta más específica
 app.use(API_PREFIX, swaggerUi.serve, swaggerUi.setup(openapiSpec));
 
 app.use("/health", healthRouter);
@@ -108,8 +107,10 @@ async function main() {
 // al cerrar, si no queda colgado en background.
 async function shutdown() {
     await disconnectDB();
+    console.log("\n\n Cerrando Base de datos...\n\n");
     process.exit(0);
 }
+//
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
 
