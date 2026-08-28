@@ -15,6 +15,7 @@ const userSchema = new mongoose.Schema(
     {
         firstName: { type: String, required: true, trim: true },
         lastName: { type: String, required: true, trim: true },
+        //lowercase: true -> 
         email: { type: String, required: true, unique: true, lowercase: true, trim: true },
         // "user" por default: la única forma de volverse admin es el seed de
         // arranque (ver ensureAdminUser en userService.js) -createUser no
@@ -37,5 +38,5 @@ const userSchema = new mongoose.Schema(
         },
     }
 );
-
+//si se omite el 3er parámetro, mongoose infiere el nombre de la colección a partir del nombre del modelo (User -> users). Acá lo ponemos explícito para que quede claro.
 export default mongoose.model("User", userSchema, "users");
