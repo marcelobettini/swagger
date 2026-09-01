@@ -110,7 +110,7 @@ async function shutdown() {
     console.log("\n\n Cerrando Base de datos...\n\n");
     process.exit(0);
 }
-//
+// esto permite que Ctrl+C (SIGINT) o docker stop (SIGTERM) cierren la DB antes de salir.
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
 
